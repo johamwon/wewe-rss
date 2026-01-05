@@ -3,12 +3,14 @@ import { AppService } from './app.service';
 import { ConfigService } from '@nestjs/config';
 import { ConfigurationType } from './configuration';
 import { Response as Res } from 'express';
+import { AccountCheckService } from './account-check/account-check.service';
 
 @Controller()
 export class AppController {
   constructor(
     private readonly appService: AppService,
     private readonly configService: ConfigService,
+    private readonly accountCheckService: AccountCheckService,
   ) {}
 
   @Get()
@@ -44,5 +46,15 @@ export class AppController {
         ? `${weweRssServerOriginUrl}/favicon.ico`
         : 'https://r2-assets.111965.xyz/wewe-rss.png',
     };
+  }
+
+  @Get('/test-webhook')
+  async testWebhook() {
+    try {
+      await this.accountCheckService.testWebhookNotification();
+      return { success: true, message: '测试webhook通知已发送' };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
   }
 }

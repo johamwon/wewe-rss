@@ -7,11 +7,13 @@ import configuration, { ConfigurationType } from './configuration';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { FeedsModule } from './feeds/feeds.module';
+import { AccountCheckModule } from './account-check/account-check.module';
 
 @Module({
   imports: [
     TrpcModule,
     FeedsModule,
+    AccountCheckModule,
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,

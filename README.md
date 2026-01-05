@@ -125,6 +125,8 @@ pnpm run start:server
 | `UPDATE_DELAY_TIME`      | 连续更新延迟时间，减少被关小黑屋                                        | `60s`                       |
 | `ENABLE_CLEAN_HTML`      | 是否开启正文html清理                                                    | `false`                     |
 | `PLATFORM_URL`           | 基础服务URL                                                             | `https://weread.111965.xyz` |
+| `ACCOUNT_CHECK_CRON`     | 账号检测定时任务Cron表达式                                               | `0 2,14 * * *` (每天2点和14点) |
+| `ACCOUNT_CHECK_WEBHOOK_URL` | 账号失效通知Webhook URL，未设置则不发送通知                           | -                           |
 
 > **注意**: 国内DNS解析问题可使用 `https://weread.965111.xyz` 加速访问
 
