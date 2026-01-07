@@ -5,6 +5,12 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "files": [
+    "dist",
+    "prisma",
+    "prisma-sqlite",
+    "docker-bootstrap.sh"
+  ],
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
