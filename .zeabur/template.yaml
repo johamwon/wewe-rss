@@ -1,0 +1,30 @@
+name: WeWe RSS
+description: WeChat official account RSS generator with a web admin UI.
+tags:
+  - rss
+  - wechat
+services:
+  - name: mysql
+    type: mysql
+  - name: wewe-rss
+    type: web
+    build:
+      type: dockerfile
+      dockerfile: Dockerfile
+    ports:
+      - port: 4000
+    env:
+      - key: DATABASE_URL
+        fromService:
+          name: mysql
+          type: mysql
+          property: connectionString
+      - key: AUTH_CODE
+        value: ""
+        description: Optional access code for the admin API.
+      - key: SERVER_ORIGIN_URL
+        value: ""
+        description: Optional public URL to generate absolute feed links.
+      - key: MAX_REQUEST_PER_MINUTE
+        value: "60"
+        description: Max requests per minute per IP.
