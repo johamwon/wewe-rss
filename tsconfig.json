@@ -14,6 +14,9 @@
       "@server/*": [
         "./apps/server/src/*"
       ],
+      "@worker/*": [
+        "./apps/worker/src/*"
+      ],
       "@web/*": [
         "./apps/web/src/*"
       ]

@@ -1,0 +1,21 @@
+name = "wewe-rss-worker"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+PLATFORM_URL = "https://weread.111965.xyz"
+SERVER_ORIGIN_URL = "http://localhost:8787"
+UPDATE_DELAY_TIME = "60"
+ENABLE_CLEAN_HTML = "false"
+FEED_CRON = "35 5,17 * * *"
+ACCOUNT_CHECK_CRON = "0 2,14 * * *"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "wewe_rss"
+database_id = "4fc0fde8-ef84-4c02-bbc6-48c2fdce63f9"
+
+[triggers]
+crons = ["35 5,17 * * *", "0 2,14 * * *"]
+

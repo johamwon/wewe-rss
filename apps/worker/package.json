@@ -1,0 +1,26 @@
+{
+  "name": "worker",
+  "private": true,
+  "version": "2.6.1",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@cjs-exporter/p-map": "^5.5.0",
+    "@trpc/server": "^10.45.1",
+    "cheerio": "1.0.0-rc.12",
+    "dayjs": "^1.11.10",
+    "feed": "^4.2.2",
+    "hono": "^4.4.0",
+    "lru-cache": "^10.2.2",
+    "qrcode": "^1.5.4",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240129.0",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.45.0"
+  }
+}

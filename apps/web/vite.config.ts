@@ -5,38 +5,22 @@ import { readFileSync } from 'fs';
 
 const projectRootDir = resolve(__dirname);
 
-const isProd = process.env.NODE_ENV === 'production';
-
-console.log('process.env.NODE_ENV: ', process.env.NODE_ENV);
-
 const packageJson = JSON.parse(
   readFileSync(resolve(__dirname, './package.json'), 'utf-8'),
 );
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: '/dash',
+  base: '/',
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
   },
-  plugins: [
-    react(),
-    !isProd
-      ? null
-      : {
-          name: 'renameIndex',
-          enforce: 'post',
-          generateBundle(options, bundle) {
-            const indexHtml = bundle['index.html'];
-            indexHtml.fileName = 'index.hbs';
-          },
-        },
-  ],
+  plugins: [react()],
   resolve: {
     alias: [
       {
-        find: '@server',
-        replacement: resolve(projectRootDir, '../apps/server/src'),
+        find: '@worker',
+        replacement: resolve(projectRootDir, '../worker/src'),
       },
       {
         find: '@web',
@@ -46,6 +30,6 @@ export default defineConfig({
   },
   build: {
     emptyOutDir: true,
-    outDir: resolve(projectRootDir, '..', 'server', 'client'),
+    outDir: resolve(projectRootDir, 'dist'),
   },
 });

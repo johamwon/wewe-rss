@@ -1,8 +1,9 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_SERVER_ORIGIN_URL: string;
+  readonly VITE_SERVER_ORIGIN_URL?: string;
   readonly VITE_ENV: string;
+  readonly VITE_ENABLED_AUTH_CODE?: string;
 }
 
 interface Window {

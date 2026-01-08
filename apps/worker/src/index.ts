@@ -1,0 +1,116 @@
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
+import type { Env } from './types';
+import { appRouter } from './trpc/router';
+import { createContext } from './trpc/context';
+import {
+  getFeedListResponse,
+  handleGenerateFeed,
+  handleUpdateFeedsCron,
+  updateFeedOnce,
+} from './services/feeds';
+import {
+  handleAccountCheckCron,
+  testWebhookNotification,
+} from './services/account-check';
+
+const app = new Hono<{ Bindings: Env }>();
+
+app.use('*', cors());
+
+app.get('/', (c) => c.text('WeWe RSS worker is running'));
+
+app.get('/robots.txt', (c) => c.text('User-agent:  *\nDisallow:  /'));
+
+app.get('/feeds', async (c) => {
+  const data = await getFeedListResponse(c.env);
+  return c.json(data);
+});
+
+app.get('/feeds/all.:type', async (c) => {
+  const type = c.req.param('type');
+  const limit = Number(c.req.query('limit') ?? '30');
+  const page = Number(c.req.query('page') ?? '1');
+  const mode = c.req.query('mode');
+  const titleInclude = c.req.query('title_include');
+  const titleExclude = c.req.query('title_exclude');
+
+  const { content, mimeType } = await handleGenerateFeed(c.env, {
+    type,
+    limit,
+    page,
+    mode: mode || undefined,
+    title_include: titleInclude || undefined,
+    title_exclude: titleExclude || undefined,
+  });
+
+  return new Response(content, {
+    headers: { 'Content-Type': mimeType },
+  });
+});
+
+app.get('/feeds/:feed', async (c) => {
+  const feed = c.req.param('feed');
+  const [id, type] = feed.split('.');
+  const limit = Number(c.req.query('limit') ?? '10');
+  const page = Number(c.req.query('page') ?? '1');
+  const mode = c.req.query('mode');
+  const titleInclude = c.req.query('title_include');
+  const titleExclude = c.req.query('title_exclude');
+  const update = c.req.query('update') === 'true';
+
+  if (update) {
+    c.executionCtx.waitUntil(updateFeedOnce(c.env, id));
+  }
+
+  const { content, mimeType } = await handleGenerateFeed(c.env, {
+    id,
+    type,
+    limit,
+    page,
+    mode: mode || undefined,
+    title_include: titleInclude || undefined,
+    title_exclude: titleExclude || undefined,
+  });
+
+  return new Response(content, {
+    headers: { 'Content-Type': mimeType },
+  });
+});
+
+app.get('/test-webhook', async (c) => {
+  await testWebhookNotification(c.env);
+  return c.json({ success: true, message: '测试webhook通知已发送' });
+});
+
+const trpcHandler = (req: Request, env: Env) =>
+  fetchRequestHandler({
+    endpoint: '/trpc',
+    req,
+    router: appRouter,
+    createContext: () => createContext(env, req),
+  });
+
+app.all('/trpc', (c) => trpcHandler(c.req.raw, c.env));
+app.all('/trpc/*', (c) => trpcHandler(c.req.raw, c.env));
+
+export default {
+  fetch: app.fetch,
+  scheduled: (event: ScheduledEvent, env: Env, ctx: ExecutionContext) => {
+    const feedCron = env.FEED_CRON ?? '35 5,17 * * *';
+    const accountCron = env.ACCOUNT_CHECK_CRON ?? '0 2,14 * * *';
+
+    if (event.cron === accountCron) {
+      ctx.waitUntil(handleAccountCheckCron(env));
+      return;
+    }
+
+    if (event.cron === feedCron) {
+      ctx.waitUntil(handleUpdateFeedsCron(env));
+      return;
+    }
+
+    ctx.waitUntil(handleUpdateFeedsCron(env));
+  },
+};
