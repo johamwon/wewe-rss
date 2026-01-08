@@ -31,15 +31,15 @@ const ArticleList: FC = () => {
       },
     );
 
-  const items = useMemo(() => {
+  const items = useMemo<any[]>(() => {
     if (!data) {
       return [];
     }
 
-    return data.pages.reduce((acc, page) => {
+    return data.pages.reduce((acc: any[], page) => {
       const pageItems = Array.isArray(page.items) ? page.items : [];
       return acc.concat(pageItems);
-    }, [] as any[]);
+    }, []);
   }, [data]);
 
   return (
@@ -76,10 +76,10 @@ const ArticleList: FC = () => {
         <TableBody
           isLoading={isLoading}
           emptyContent={'暂无数据'}
-          items={items || []}
+          items={items as any[]}
           loadingContent={<Spinner />}
         >
-          {(item) => (
+          {(item: any) => (
             <TableRow key={item.id}>
               {(columnKey) => {
                 let value = getKeyValue(item, columnKey);
