@@ -32,11 +32,14 @@ const ArticleList: FC = () => {
     );
 
   const items = useMemo(() => {
-    const items = data
-      ? data.pages.reduce((acc, page) => [...acc, ...page.items], [] as any[])
-      : [];
+    if (!data) {
+      return [];
+    }
 
-    return items;
+    return data.pages.reduce((acc, page) => {
+      const pageItems = Array.isArray(page.items) ? page.items : [];
+      return acc.concat(pageItems);
+    }, [] as any[]);
   }, [data]);
 
   return (
