@@ -122,8 +122,18 @@ app.get('/feeds/:feed', async (c) => {
 });
 
 app.get('/test-webhook', async (c) => {
-  await testWebhookNotification(c.env);
-  return c.json({ success: true, message: '测试webhook通知已发送' });
+  const debug = c.req.query('debug') === 'true';
+  try {
+    await testWebhookNotification(c.env);
+    return c.json({ success: true, message: '测试webhook通知已发送' });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Test webhook failed';
+    return c.json(
+      { success: false, message: debug ? message : 'Test webhook failed' },
+      500,
+    );
+  }
 });
 
 const trpcHandler = (req: Request, env: Env) =>

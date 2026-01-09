@@ -1,12 +1,11 @@
-import * as QRCode from 'qrcode';
 import type { Env } from '../types';
 import { statusMap } from '../constants';
 import {
-  listEnabledAccountsWithTokens,
+  listInvalidAccountsWithTokens,
   listEnabledFeeds,
   updateAccount,
 } from './db-queries';
-import { createLoginUrl } from './trpc-service';
+import { createLoginUrl, getLoginResult, removeBlockedAccount } from './trpc-service';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -64,16 +63,18 @@ export async function checkAccountValidity(
   }
 }
 
-export async function generateQRCodeBase64(url: string) {
-  return QRCode.toDataURL(url, { width: 300, margin: 2 });
+export function getQrCodeImageUrl(url: string) {
+  const encoded = encodeURIComponent(url);
+  return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encoded}`;
 }
 
 export async function sendWebhookNotification(
   env: Env,
   accountId: string,
   accountName: string,
-  qrCodeBase64: string,
+  qrCodeUrl: string,
   scanUrl: string,
+  loginId: string,
 ) {
   const webhookUrl = getWebhookUrl(env);
   const beijingTime = new Date().toLocaleString('zh-CN', {
@@ -86,6 +87,10 @@ export async function sendWebhookNotification(
     second: '2-digit',
   });
 
+  const qrSection = qrCodeUrl
+    ? `![登录二维码](${qrCodeUrl})\n\n`
+    : '';
+
   const markdownText = `## 微信读书账号失效通知
 
 **账号信息：**
@@ -95,9 +100,11 @@ export async function sendWebhookNotification(
 
 **请扫描以下二维码重新登录微信账号：**
 
-![登录二维码](${qrCodeBase64})
+${qrSection}
 
 **二维码链接：** ${scanUrl}
+
+**登录ID：** \`${loginId}\`
 
 **或直接访问：** [点击这里打开二维码](${scanUrl})
 
@@ -125,25 +132,57 @@ export async function checkAndHandleAccount(env: Env, account: {
 }) {
   const isValid = await checkAccountValidity(env, account.id, account.token);
   if (isValid) {
+    await updateAccount(env.DB, account.id, { status: statusMap.ENABLE });
     return;
   }
 
   await updateAccount(env.DB, account.id, { status: statusMap.INVALID });
 
   const loginData = await createLoginUrl(env);
-  const qrCodeBase64 = await generateQRCodeBase64(loginData.scanUrl);
+  const qrCodeUrl = getQrCodeImageUrl(loginData.scanUrl);
   await sendWebhookNotification(
     env,
     account.id,
     account.name,
-    qrCodeBase64,
+    qrCodeUrl,
     loginData.scanUrl,
+    loginData.uuid,
   );
+
+  await tryRefreshAccountFromLogin(env, account, loginData.uuid);
+}
+
+async function tryRefreshAccountFromLogin(
+  env: Env,
+  account: { id: string; name: string },
+  loginId: string,
+) {
+  try {
+    const maxAttempts = 60;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const loginResult = await getLoginResult(env, loginId, 10000);
+      if (loginResult?.vid && loginResult?.token) {
+        const vid = `${loginResult.vid}`;
+        if (vid === account.id) {
+          await updateAccount(env.DB, account.id, {
+            token: loginResult.token,
+            name: loginResult.username || account.name,
+            status: statusMap.ENABLE,
+          });
+          removeBlockedAccount(account.id);
+        }
+        return;
+      }
+      await sleep(5 * 1000);
+    }
+  } catch (error) {
+    console.error('[account-check] failed to refresh account from login:', error);
+  }
 }
 
 export async function handleAccountCheckCron(env: Env) {
-  const enabledAccounts = await listEnabledAccountsWithTokens(env.DB);
-  for (const account of enabledAccounts) {
+  const invalidAccounts = await listInvalidAccountsWithTokens(env.DB);
+  for (const account of invalidAccounts) {
     await checkAndHandleAccount(env, account);
     await sleep(5 * 1000);
   }
@@ -151,12 +190,13 @@ export async function handleAccountCheckCron(env: Env) {
 
 export async function testWebhookNotification(env: Env) {
   const loginData = await createLoginUrl(env);
-  const qrCodeBase64 = await generateQRCodeBase64(loginData.scanUrl);
+  const qrCodeUrl = getQrCodeImageUrl(loginData.scanUrl);
   await sendWebhookNotification(
     env,
     'TEST_ACCOUNT_ID',
     '测试微信账号',
-    qrCodeBase64,
+    qrCodeUrl,
     loginData.scanUrl,
+    loginData.uuid,
   );
 }

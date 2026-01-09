@@ -513,3 +513,14 @@ export async function listEnabledAccountsWithTokens(db: D1Database) {
     .all<AccountRow>();
   return rows.results.map((row) => toAccountDto(row));
 }
+
+export async function listInvalidAccountsWithTokens(db: D1Database) {
+  const rows = await db
+    .prepare(
+      `SELECT id, token, name, status, created_at, updated_at
+       FROM accounts WHERE status = ?`,
+    )
+    .bind(statusMap.INVALID)
+    .all<AccountRow>();
+  return rows.results.map((row) => toAccountDto(row));
+}

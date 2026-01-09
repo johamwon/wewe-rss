@@ -265,11 +265,15 @@ export async function createLoginUrl(env: Env) {
   }>(env, '/api/v2/login/platform');
 }
 
-export async function getLoginResult(env: Env, id: string) {
+export async function getLoginResult(
+  env: Env,
+  id: string,
+  timeoutMs = 120000,
+) {
   return fetchJson<{
     message: string;
     vid?: number;
     token?: string;
     username?: string;
-  }>(env, `/api/v2/login/platform/${id}`, { timeoutMs: 120000 });
+  }>(env, `/api/v2/login/platform/${id}`, { timeoutMs });
 }
