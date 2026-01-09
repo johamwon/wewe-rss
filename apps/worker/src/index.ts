@@ -28,55 +28,77 @@ app.get('/feeds', async (c) => {
   return c.json(data);
 });
 
+function getFeedErrorResponse(error: unknown) {
+  const message =
+    error instanceof Error ? error.message : 'Failed to generate feed';
+  if (message.includes('不存在该feed')) {
+    return new Response('Feed not found', { status: 404 });
+  }
+  console.error('[feeds] error generating feed:', error);
+  return new Response('Internal Server Error', { status: 500 });
+}
+
 app.get('/feeds/all.:type', async (c) => {
-  const type = c.req.param('type');
-  const limit = Number(c.req.query('limit') ?? '30');
-  const page = Number(c.req.query('page') ?? '1');
-  const mode = c.req.query('mode');
-  const titleInclude = c.req.query('title_include');
-  const titleExclude = c.req.query('title_exclude');
+  try {
+    const type = c.req.param('type');
+    const limit = Number(c.req.query('limit') ?? '30');
+    const page = Number(c.req.query('page') ?? '1');
+    const mode = c.req.query('mode');
+    const titleInclude = c.req.query('title_include');
+    const titleExclude = c.req.query('title_exclude');
 
-  const { content, mimeType } = await handleGenerateFeed(c.env, {
-    type,
-    limit,
-    page,
-    mode: mode || undefined,
-    title_include: titleInclude || undefined,
-    title_exclude: titleExclude || undefined,
-  });
+    const { content, mimeType } = await handleGenerateFeed(c.env, {
+      type,
+      limit,
+      page,
+      mode: mode || undefined,
+      title_include: titleInclude || undefined,
+      title_exclude: titleExclude || undefined,
+    });
 
-  return new Response(content, {
-    headers: { 'Content-Type': mimeType },
-  });
+    return new Response(content, {
+      headers: { 'Content-Type': mimeType },
+    });
+  } catch (error) {
+    return getFeedErrorResponse(error);
+  }
 });
 
 app.get('/feeds/:feed', async (c) => {
-  const feed = c.req.param('feed');
-  const [id, type] = feed.split('.');
-  const limit = Number(c.req.query('limit') ?? '10');
-  const page = Number(c.req.query('page') ?? '1');
-  const mode = c.req.query('mode');
-  const titleInclude = c.req.query('title_include');
-  const titleExclude = c.req.query('title_exclude');
-  const update = c.req.query('update') === 'true';
+  try {
+    const feed = c.req.param('feed');
+    const [id, type] = feed.split('.');
+    const limit = Number(c.req.query('limit') ?? '10');
+    const page = Number(c.req.query('page') ?? '1');
+    const mode = c.req.query('mode');
+    const titleInclude = c.req.query('title_include');
+    const titleExclude = c.req.query('title_exclude');
+    const update = c.req.query('update') === 'true';
 
-  if (update) {
-    c.executionCtx.waitUntil(updateFeedOnce(c.env, id));
+    if (!id) {
+      return new Response('Feed not found', { status: 404 });
+    }
+
+    if (update) {
+      c.executionCtx.waitUntil(updateFeedOnce(c.env, id));
+    }
+
+    const { content, mimeType } = await handleGenerateFeed(c.env, {
+      id,
+      type,
+      limit,
+      page,
+      mode: mode || undefined,
+      title_include: titleInclude || undefined,
+      title_exclude: titleExclude || undefined,
+    });
+
+    return new Response(content, {
+      headers: { 'Content-Type': mimeType },
+    });
+  } catch (error) {
+    return getFeedErrorResponse(error);
   }
-
-  const { content, mimeType } = await handleGenerateFeed(c.env, {
-    id,
-    type,
-    limit,
-    page,
-    mode: mode || undefined,
-    title_include: titleInclude || undefined,
-    title_exclude: titleExclude || undefined,
-  });
-
-  return new Response(content, {
-    headers: { 'Content-Type': mimeType },
-  });
 });
 
 app.get('/test-webhook', async (c) => {
@@ -111,6 +133,8 @@ export default {
       return;
     }
 
+    // Fallback: run both when cron mismatches env vars (e.g., dashboard override).
+    ctx.waitUntil(handleAccountCheckCron(env));
     ctx.waitUntil(handleUpdateFeedsCron(env));
   },
 };
