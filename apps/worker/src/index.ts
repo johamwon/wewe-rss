@@ -19,6 +19,11 @@ const app = new Hono<{ Bindings: Env }>();
 
 app.use('*', cors());
 
+app.onError((err) => {
+  console.error('[worker] unhandled error:', err);
+  return new Response('Internal Server Error', { status: 500 });
+});
+
 app.get('/', (c) => c.text('WeWe RSS worker is running'));
 
 app.get('/robots.txt', (c) => c.text('User-agent:  *\nDisallow:  /'));
@@ -77,6 +82,21 @@ app.get('/feeds/:feed', async (c) => {
 
     if (!id) {
       return new Response('Feed not found', { status: 404 });
+    }
+
+    if (id === 'all') {
+      const { content, mimeType } = await handleGenerateFeed(c.env, {
+        type,
+        limit,
+        page,
+        mode: mode || undefined,
+        title_include: titleInclude || undefined,
+        title_exclude: titleExclude || undefined,
+      });
+
+      return new Response(content, {
+        headers: { 'Content-Type': mimeType },
+      });
     }
 
     if (update) {

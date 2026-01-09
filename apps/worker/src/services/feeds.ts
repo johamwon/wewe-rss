@@ -1,7 +1,6 @@
 import { Feed, Item } from 'feed';
 import { load } from 'cheerio';
 import { LRUCache } from 'lru-cache';
-import pMap from '@cjs-exporter/p-map';
 import type { Env } from '../types';
 import { feedMimeTypeMap, feedTypes, statusMap } from '../constants';
 import {
@@ -137,7 +136,9 @@ async function renderFeed(env: Env, opts: { type: string; feedInfo: any; article
     });
   };
 
-  await pMap(opts.articles, mapper, { concurrency: 2, stopOnError: false });
+  for (const item of opts.articles) {
+    await mapper(item);
+  }
   return feed;
 }
 
